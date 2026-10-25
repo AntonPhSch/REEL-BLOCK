@@ -1,136 +1,90 @@
 # ReelBlock
 
-Ein kleines Skript für Safari auf dem iPhone. Es entfernt die Kurzvideos aus Instagram, YouTube und TikTok. Der Rest der Seiten bleibt unverändert.
+A userscript for Safari on iOS that removes short-form video from Instagram, YouTube and TikTok while leaving the rest of each site usable.
 
-| Seite | Was verschwindet | Was bleibt |
+| Site | Removed | Kept |
 |---|---|---|
-| **Instagram** | Reels-Tab, Reels-Feed, Raster auf der Suchseite, Hashtag- und Orts-Treffer, vorgeschlagene Beiträge und Werbung | Storys und Beiträge von Freunden, Nachrichten, Profilsuche, Profile mit allen Beiträgen |
-| **YouTube** (auch m.youtube.com) | Shorts-Knopf in der unteren Leiste, alle Shorts-Reihen; jede `/shorts/`-Adresse führt zur Startseite | alle normalen Videos |
-| **TikTok** | alles | einzelne Videos, die dir geschickt wurden |
+| Instagram | Reels tab, Reels feed, Explore grid, hashtag and location results, suggested posts, ads | Stories and posts from accounts you follow, DMs, profile search, profiles |
+| YouTube (incl. m.youtube.com) | Shorts tab, Shorts shelves, Shorts on channel pages; any `/shorts/` URL redirects to the home page | Regular videos |
+| TikTok | Everything | Single videos opened from a link |
 
-**Geschickte Reels:** Ein Reel, das du in den Nachrichten bekommst, kannst du öffnen und ansehen. Wischst du zum nächsten Reel, legt sich ein dunkler Vorhang über die Seite und das Video stoppt. Der Vorhang hat zwei Knöpfe: „Zurück zum Video“ und „Zur Startseite“.
+A reel someone sends you in a DM still opens and plays. Swiping to the next reel pauses playback and shows an overlay with *Back to video* and *Go to home page*.
 
----
+## Why a userscript
 
-## Warum JavaScript und nicht Python?
+iOS does not let one app modify another, so the Reels tab inside the native Instagram app cannot be removed by any third-party code. The web versions in Safari can be modified through a Safari extension, which means the code has to be JavaScript running in the page. The approach is therefore: remove (or lock) the native apps and use the sites in Safari with this script.
 
-- iOS erlaubt **keiner** App, das Innere einer anderen App zu verändern. Den Reels-Tab in der echten Instagram-App kann also kein Programm ausblenden. Das gilt für Python, Swift und jede andere Sprache.
-- Die **Webseiten** (instagram.com, youtube.com) in Safari kann man dagegen verändern. Code, der in einer Webseite läuft, muss JavaScript sein. Python läuft nicht im Browser.
+## Installation
 
-Darum der Plan:
-1. Die Instagram- und YouTube-**Apps** löschst oder sperrst du.
-2. Du nutzt Instagram und YouTube in **Safari**. Dort entfernt dieses Skript die Kurzvideos.
+1. Install [Userscripts](https://apps.apple.com/app/userscripts/id1463298887) from the App Store.
+2. Open it, tap **Set Userscripts Directory** and pick a folder in Files, e.g. `iCloud Drive/Userscripts`.
+3. Copy `reelblock.user.js` into that folder.
+4. Enable the extension under *Settings → Apps → Safari → Extensions → Userscripts* and allow it on instagram.com, youtube.com, m.youtube.com and tiktok.com.
+5. Delete the native Instagram, YouTube and TikTok apps, or lock them with a Screen Time app limit. As long as an app is installed, links tend to open in the app instead of Safari.
 
----
+Use the sites in a regular Safari tab. Home-screen web apps ("Add to Home Screen") do not run Safari extensions.
 
-## Einrichtung (ca. 5 Minuten)
+## Configuration
 
-1. **App installieren:** Lade im App Store die kostenlose App **„Userscripts“** (von Justin Wasack). Sie führt Skripte wie dieses in Safari aus.
-2. **Ordner festlegen:** Öffne Userscripts und tippe auf „Set Userscripts Directory“. Wähle einen Ordner in der Dateien-App, z. B. `iCloud Drive/Userscripts`.
-3. **Skript hineinlegen:** Kopiere `reelblock.user.js` in diesen Ordner, z. B. per AirDrop oder iCloud Drive. Der Dateiname muss auf `.user.js` enden.
-4. **Erweiterung einschalten:** Gehe zu *Einstellungen → Apps → Safari → Erweiterungen → Userscripts*. Schalte sie ein und erlaube sie auf *instagram.com*, *youtube.com* und *tiktok.com*, oder einfach auf „Alle Websites“.
-5. **Native Apps loswerden:**
-   - Am einfachsten **löschst** du die Instagram-, YouTube- und TikTok-Apps.
-   - Oder du sperrst sie über *Einstellungen → Bildschirmzeit → App-Limits → Limit hinzufügen*. Wähle die Apps, stelle 1 Minute ein und lege einen Bildschirmzeit-Code fest, den du nicht kennst, z. B. von einem Freund.
-   - Wichtig: Ist die App noch installiert, öffnen Links oft automatisch die App statt Safari.
-6. **Testen:** Öffne `instagram.com` in Safari und melde dich an. Der Reels-Tab unten sollte fehlen.
-
-> Tipp: Nutze Instagram in einem normalen Safari-Tab und **nicht** als Symbol auf dem Home-Bildschirm („Zum Home-Bildschirm“). In solchen Web-Apps laufen Safari-Erweiterungen nicht.
-
----
-
-## Einstellungen ändern
-
-Ganz oben im Skript steht:
+Each site can be turned off at the top of the script:
 
 ```js
-const SPERREN = {
+const ENABLED = {
   instagram: true,
-  youtube:   true,
-  tiktok:    true,
+  youtube: true,
+  tiktok: true,
 };
 ```
 
-Mit `false` statt `true` bleibt die Seite unverändert. Danach speichern und die Seite in Safari neu laden.
+`PROMOTED_LABELS` lists the words Instagram uses to mark suggested posts and ads. If your Instagram UI is in a language that is not listed, add its label there.
 
----
+## How it works
 
-## So funktioniert der Code
+The script is built around a `RULES` table with one entry per site:
 
-Das Skript hat sieben Teile. Jeder ist im Code mit einer großen Überschrift markiert.
-
-### 1. Einstellungen
-Welche Seiten gesperrt werden (siehe oben).
-
-### 2. Regeln pro Seite
-Für jede Seite gibt es bis zu vier Dinge:
-
-- **`css`**: eine Liste von Elementen, die unsichtbar werden (`display: none`). So verschwinden z. B. der Reels-Knopf oder die Shorts-Reihen. Die Namen wie `a[href="/reels/"]` heißen *CSS-Selektoren*. Dieser hier bedeutet: „jeder Link, der auf /reels/ zeigt“.
-- **`umleiten`**: bekommt die aktuelle Adresse, z. B. `/reels/`, und entscheidet:
-  - `null`: Seite ist erlaubt
-  - eine Adresse: dorthin weiterleiten (Reels-Feed → Startseite, Short → YouTube-Startseite)
-  - `"SPERRE"`: Sperrbild zeigen (bei TikTok)
-- **`video`**: erkennt, ob die Adresse ein einzelnes Kurzvideo ist, und gibt dessen ID zurück. Beispiel: `/reel/ABC123/` ergibt `ABC123`.
-- **`einVideoBereich`**: wo nur **ein** Video laufen darf. Bei Instagram sind das Reel-Seiten und die Nachrichten (siehe Teil 6).
-- **`aufraeumen`**: läuft ständig mit, für Dinge, die CSS allein nicht kann. Auf Instagram versteckt es die leere Hülle um den Reels-Knopf und Beiträge mit „Vorgeschlagen“ oder „Gesponsert“.
-
-Die Zeichenketten wie `/^\/reels\/?$/` sind *reguläre Ausdrücke*, also Suchmuster für Text. `^` heißt Anfang, `$` heißt Ende, `\/` ist ein Schrägstrich und `?` heißt „darf fehlen“. `/^\/reels\/?$/` passt also genau auf `/reels` und `/reels/`.
-
-### 3. Start
-Das Skript schaut, auf welcher Seite es gerade läuft (`location.hostname`). Ist die Seite eingeschaltet, fügt es sofort das CSS ein, noch bevor die Seite fertig geladen ist. So blitzen die Reels nicht kurz auf.
-
-### 4. Sperrbild
-Eine Funktion, die einen schwarzen Vorhang mit ✋ und Knöpfen über die ganze Seite legt.
-
-### 5. Hauptschleife: der wichtigste Teil
-Instagram und YouTube laden neue Seiten, ohne Safari wirklich neu zu laden. Das Skript bekommt das nicht automatisch mit. Darum schaut es **alle 0,3 Sekunden** nach, ob sich die Adresse geändert hat. Wenn ja:
-
-1. **Verbotene Seite?** Dann weiterleiten oder sperren.
-2. **Einzelnes Video?** Dann gilt die „Ein-Video-Regel“:
-   - Du kommst von einer normalen Seite (Nachrichten, Profil, Startseite) zu einem Video: **erlaubt**. Das Skript merkt sich dieses Video in `erlaubt`.
-   - Danach kommt sofort ein **anderes** Video: Du hast weitergewischt. Das Video wird **gesperrt**, der Vorhang kommt.
-   - Gehst du zurück zu einer normalen Seite, wird `erlaubt` gelöscht. Das nächste geschickte Reel darfst du wieder ansehen.
-
-Bei YouTube braucht es diese Regel nicht: Jede Adresse mit `/shorts/` schickt dich direkt zur Startseite. Auch geschickte Shorts lassen sich deshalb nicht öffnen.
-
-Die **mobile Seite m.youtube.com** ist anders gebaut als die Computer-Version. Darum sucht `aufraeumen` dort zusätzlich nach allem, was „Shorts“ heißt (z. B. der Knopf in der unteren Leiste) oder auf `/shorts/` verlinkt, und versteckt es.
-
-### 6. Video-Wächter: zweite Sicherung
-Auf dem Handy ändert Instagram beim Weiterwischen oft **nicht** die Adresse. Dann merkt Teil 5 nichts. Deshalb achtet das Skript zusätzlich darauf, **welches Video startet**. Jedes Mal, wenn ein Video losläuft, meldet der Browser das Ereignis `play`.
-
-- Das **erste sichtbare** Video in den Nachrichten oder auf einer Reel-Seite darf laufen. Das Skript merkt es sich in `erstesVideo`.
-- Startet danach ein **anderes** Video, wird es sofort gestoppt und der Vorhang kommt.
-- Videos, die Instagram unsichtbar im Hintergrund vorlädt, werden still gestoppt.
-- Wird das erste Video geschlossen (es verschwindet von der Seite), oder gehst du auf eine andere Seite, wird `erstesVideo` gelöscht. Das nächste geschickte Reel geht dann wieder.
-
-Auf der Startseite und auf Profilen gilt der Wächter nicht. Videos von Freunden im Feed laufen normal.
-
-### 7. Wisch-Sperre: dritte Sicherung
-Auf einer Reel-Seite (`/reel/...`) blockiert das Skript das senkrechte Wischen mit dem Finger (`touchmove` → `preventDefault()`). Ausgenommen sind Kommentarfenster und Eingabefelder, dort kannst du weiter scrollen und tippen.
-
----
-
-## Grenzen und Fehlerbehebung
-
-- **Instagram und YouTube ändern ihre Webseiten manchmal.** Taucht ein Reels-Knopf oder eine Shorts-Reihe wieder auf, passt ein Selektor nicht mehr. Lösung: Mit Safari auf dem Mac die Seite öffnen und das Element per Rechtsklick → „Element untersuchen“ ansehen. Dann den neuen Namen in die `css`-Liste eintragen.
-- **Vorgeschlagene Beiträge** werden über den Text „Vorgeschlagen“, „Suggested“, „Gesponsert“ oder „Sponsored“ erkannt. Bei anderer Sprache musst du das Wort in `aufraeumen` ergänzen.
-- **Auf einer Reel-Seite kannst du nicht nach unten scrollen**, das verhindert die Wisch-Sperre. Kommentare öffnest du über das Sprechblasen-Symbol.
-- **Kommt der Vorhang beim ersten Reel fälschlich**, z. B. weil Instagram etwas anders lädt: Tippe „Zurück zum Video“. Hilft das nicht, sag Bescheid.
-- **Hashtags in Bildunterschriften** von Freunden führen zur (leeren) Suchseite, weil Hashtag-Seiten gesperrt sind.
-- **Die Sperre lässt sich umgehen**, wenn du das Skript ausschaltest. Das Skript ist eine Hilfe für deine Selbstdisziplin, kein Tresor.
-- Das Skript wurde **nicht** auf einem echten iPhone getestet. Bitte probiere es aus und sag Bescheid, was nicht klappt.
-
----
-
-## Dateien
-
-| Datei | Inhalt |
+| Field | Purpose |
 |---|---|
-| `reelblock.user.js` | das Skript (ca. 210 Zeilen, davon viele Notizen) |
-| `README.md` | diese Anleitung |
+| `css` | Selectors hidden with a stylesheet injected at `document-start`, so nothing flashes before the page has loaded |
+| `redirect(path)` | Returns a path to redirect to, `BLOCK` to show the overlay, or `null` to allow the page |
+| `videoId(path)` | Extracts the ID of a single short video from the URL |
+| `singleVideoZone(path)` | Pages where only one video may play (Instagram reel pages and DMs) |
+| `clean(roots)` | DOM cleanup that CSS cannot express, e.g. detecting ads by their label or hiding the empty wrapper around the Reels tab |
 
-## Funktioniert das Skript auf YouTube nicht?
+The pure parts (`redirect`, `videoId`, `singleVideoZone`, `matchSite` and the navigation state machine `step`) have no DOM access and are covered by unit tests.
 
-1. Öffne YouTube in Safari, tippe auf **„aA“** in der Adressleiste und dann auf **Userscripts**. Erlaube die Erweiterung für diese Seite. m.youtube.com zählt als eigene Seite.
-2. Lade die Seite neu.
-3. Möchtest du lieber die Computer-Version, tippe auf „aA“ → „Desktop-Website anfordern“. Das Skript funktioniert auf beiden Versionen.
+### Detecting navigation
+
+Instagram, YouTube and TikTok are single-page apps: navigating changes the URL through the History API without a page load, so the script never gets a load event. Userscripts runs scripts in an isolated content world by default, so patching `history.pushState` would not see the site's own calls.
+
+Instead, a single `MutationObserver` watches the document. Every client-side navigation changes the DOM, so each mutation batch triggers a cheap comparison of `location.pathname` with the last known path. `popstate` and, where available, the Navigation API cover back/forward navigation. The observer also passes the added nodes to `clean()`, which only searches inside those nodes rather than querying the whole document again.
+
+An earlier version polled every 300 ms. The observer reacts immediately instead of up to 300 ms late, does no work while the page is idle, and keeps the cleanup scoped to what actually changed.
+
+### One video, three layers
+
+1. **Route check.** `step()` remembers the first reel opened from a normal page. If the URL then changes to a different reel, the overlay is shown. Going back to a normal page resets it.
+2. **Play guard.** Mobile Instagram often swaps the video on swipe without changing the URL. A capture-phase `play` listener lets the first centred video play inside a single-video zone and pauses any other one. Preloaded off-screen videos are paused silently, and videos that start while the overlay is up are paused as well.
+3. **Swipe lock.** On reel pages vertical `touchmove` is cancelled, except inside dialogs (comments) and text fields.
+
+## Development
+
+The script is a single file because Userscripts loads one file per script. When it is loaded by Node, it exports its rule functions instead of touching the DOM, so they can be tested without a browser:
+
+```sh
+npm test
+```
+
+The tests use the built-in `node:test` runner and need no dependencies. They also run on every push via GitHub Actions.
+
+## Limitations
+
+- Selectors depend on markup that Instagram and YouTube change from time to time. If a Reels button or Shorts shelf reappears, inspect it with Safari's Web Inspector and add the new selector to `css`.
+- Ad and suggestion detection relies on the visible label, so it only works for languages listed in `PROMOTED_LABELS`.
+- Scrolling on a reel page is disabled; comments open through the comment icon.
+- Hashtag pages are blocked, so hashtags in captions lead to the empty search page.
+- Shorts sent to you cannot be opened, since every `/shorts/` URL redirects.
+- The block can be bypassed by turning the extension off. It is meant to support self-control, not to enforce it.
+
+## License
+
+[MIT](LICENSE)

@@ -1,0 +1,13 @@
+{
+  "name": "reelblock",
+  "version": "1.1.0",
+  "description": "Userscript for Safari on iOS that hides Instagram Reels, YouTube Shorts and TikTok.",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test test/rules.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
